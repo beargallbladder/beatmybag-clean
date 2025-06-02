@@ -1,33 +1,54 @@
 import { useState } from 'react'
 
+// ⚠️ IMPORTANT: Use the PUBLIC Railway URL, not .railway.internal
+// Get it from Railway dashboard → Settings → Domains
+const API_URL = 'https://golf-production-a62b.up.railway.app' // ✅ Your Railway URL!
+
 // Simple self-contained BeatMyBag app
 export function SimpleApp() {
   const [page, setPage] = useState('login')
   const [shots, setShots] = useState<any[]>([])
   const [analyzing, setAnalyzing] = useState(false)
+  const [email, setEmail] = useState('')
 
-  // Fake login
-  const handleLogin = () => {
-    localStorage.setItem('token', 'fake-token')
-    setPage('dashboard')
+  // Real login
+  const handleLogin = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email || 'test@example.com' })
+      })
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      setPage('dashboard')
+    } catch (err) {
+      alert('Login failed - check if backend is running')
+    }
   }
 
-  // Fake shot analysis
-  const handleCapture = () => {
+  // Real shot analysis
+  const handleCapture = async () => {
     setAnalyzing(true)
-    setTimeout(() => {
-      const fakeShot = {
-        id: Date.now(),
-        club: '7 Iron',
-        ballSpeed: Math.floor(Math.random() * 30) + 120,
-        carry: Math.floor(Math.random() * 30) + 150,
-        total: Math.floor(Math.random() * 30) + 160,
-        timestamp: new Date().toLocaleTimeString()
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API_URL}/api/shots/analyze`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ captureData: { timestamp: Date.now() } })
+      })
+      const data = await res.json()
+      if (data.shot) {
+        setShots([data.shot, ...shots].slice(0, 10))
+        alert(`Shot analyzed! ${data.shot.club}: ${data.shot.carry} yards`)
       }
-      setShots([fakeShot, ...shots].slice(0, 10))
-      setAnalyzing(false)
-      alert(`Shot analyzed! ${fakeShot.club}: ${fakeShot.carry} yards`)
-    }, 2000)
+    } catch (err) {
+      alert('Analysis failed - check backend')
+    }
+    setAnalyzing(false)
   }
 
   // Login Page
@@ -37,6 +58,13 @@ export function SimpleApp() {
         <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">BeatMyBag</h1>
           <p className="text-gray-600 mb-6">Track your golf shots with AI</p>
+          <input
+            type="email"
+            placeholder="Enter email (optional)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-3 border rounded-lg mb-4"
+          />
           <button
             onClick={handleLogin}
             className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -44,6 +72,7 @@ export function SimpleApp() {
             Start Tracking Shots
           </button>
           <p className="text-sm text-gray-500 mt-4">Free: 30 shots • Pro: Unlimited for $7.99/year</p>
+          <p className="text-xs text-red-500 mt-2">Backend URL: {API_URL}</p>
         </div>
       </div>
     )
@@ -94,7 +123,7 @@ export function SimpleApp() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium text-green-600">{shot.ballSpeed} mph</div>
-                      <div className="text-xs text-gray-500">{shot.timestamp}</div>
+                      <div className="text-xs text-gray-500">{new Date(shot.timestamp || Date.now()).toLocaleTimeString()}</div>
                     </div>
                   </div>
                 </div>
