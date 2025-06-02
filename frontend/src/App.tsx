@@ -1,9 +1,7 @@
-import { LoginPage } from "./pages/LoginPage"
+import { SimpleApp } from "./SimpleApp"
 
 function App() {
-  console.log("App component rendering");
-  
-  return <LoginPage />
+  return <SimpleApp />
 }
 
 export default App
